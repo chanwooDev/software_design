@@ -33,8 +33,8 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 
 	router.get('/create', function(request, response){
-		  var date;
-		  var html = boardTemplate.html('','','','',`
+		  var date;	//title,author,date,image,body,list,comment, create_form
+		  var html = boardTemplate.html('','','','','','',`
 			<div class="card my-4">
 			  <form action="/board_page/create_process" method="post">
 			      <div class="card my-4">

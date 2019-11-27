@@ -19,7 +19,7 @@ var viewerTemplate = require('./lib/viewerTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
 
-
+var push = require('push.js');
 
 
 var mysql = require('mysql');
@@ -39,14 +39,9 @@ app.use('/static', express.static(__dirname + '/public'));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-app.get('*', function(request, response, next){
-  fs.readdir('./data', function(error, filelist){
-    request.list = filelist;
-    next();
-  });
-});
-app.get('/', function(request, response){
 
+app.get('/', function(request, response){
+  push.create('Hello World!');
   if(false){  // 쿠키 체크
     alert("로그인이 필요합니다");
     response.redirect('/');
@@ -55,26 +50,12 @@ app.get('/', function(request, response){
 
   db.query(`SELECT * FROM board`, function(error, result){
     var boards = ``;
-    for(var i=0; i<result.length; i++){
+    for(var i=result.length-1; i>=0; i--){
       var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].date);
       boards += boardPointer;
     }
     var html = homeTemplate.html(boards);
     response.send(html);
-  });
-});
-app.get('/board_page', function(request, response){
-  db.query('SELECT * FROM board', function(error, boards){
-    if(error){
-      throw error;
-    }
-    db.query(`SELECT * FROM board WHERE id=?`,[request.query.id], function(error2, board){
-      if(error2){
-        throw error2;
-      }
-      var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '');
-      response.send(html);
-    });
   });
 });
 
@@ -96,7 +77,30 @@ app.post('/login_process', function(request, response){
     response.redirect('/login_page');
   }
 });
-
+app.get('/board_page', function(request, response){
+  db.query('SELECT * FROM board', function(error, boards){
+    if(error){
+      throw error;
+    }
+    db.query(`SELECT * FROM board WHERE id=?`,[request.query.id], function(error2, board){
+      if(error2){
+        throw error2;
+      }
+      db.query(`SELECT * FROM comment WHERE id=?`,[request.query.id], function(error3, comments){
+        if(error3){
+          throw error3;
+        }
+        var comment = '';
+        for(var i=0; i<comments.length; i++){
+          comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
+        }
+        var create_form = boardTemplate.create_form(request.query.id);
+        var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
+        response.send(html);
+      });
+    });
+  });
+});
 app.get('/circles', function(request, response){
   console.log(request.query.id);
   var html = circleTemplate.html();//title,author,date,image,body,list
@@ -120,23 +124,6 @@ app.get('/circle_main', function(request, response){
 //   var html = viewerTemplate.html(request.query.id);
 //   response.send(html);
 // });
-
-app.get('/comment', function(request, response){
-  var comment = new Array();
-
-  fs.readdir('./data', function(error, filelist){
-    request.list = filelist;
-  });
-
- ////readFileSync 로만 작동....
-  for(var i=0; i<request.list.length; i++){
-    var fname = request.list[i];
-    comment[i] = fs.readFileSync(`./data/${fname}`, 'utf8');
-  }
-
-  var html = viewerTemplate.html(request.query.id,request.list,comment);
-  response.send(html);
-});
 
 
 app.post('/comment_createprocess', function(request, response){
