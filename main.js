@@ -1,3 +1,4 @@
+
 /*jshint esversion: 6 */
 
 var express = require('express');
@@ -15,6 +16,7 @@ var circleMainTemplate = require('./lib/circleMainTemplate.js');
 var circleTemplate = require('./lib/circleTemplate.js');
 var boardTemplate = require('./lib/boardTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
+var joinTemplate = require('./lib/joinTemplate.js');
 var viewerTemplate = require('./lib/viewerTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
@@ -40,9 +42,13 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 
 app.get('/', function(request, response){
-  if(false){  // 쿠키 체크
-    alert("로그인이 필요합니다");
-    response.redirect('/');
+  if(!(request.cookies.name)){  // 쿠키 체크
+    response.send(`
+      <script type = "text/javascript">alert("로그인이 필요합니다.");
+      location.href='/login';
+      </script>
+      `);
+      next();
   }
 
 
@@ -57,24 +63,88 @@ app.get('/', function(request, response){
   });
 });
 
-app.get('/login_page', function(request, response){
+app.get('/login', function(request, response){
   var html = loginTemplate.html();
+  response.send(html);
+  /*if(false){  // 쿠키 체크
+    alert("로그인이 필요합니다");
+    response.redirect('/');
+  }
+  var html = homeTemplate.html();
+  response.send(html);*/
+});
+
+app.post('/login_process', function(request,response){
+  var post=request.body;
+  var id=post.ID;
+  var pw=post.PW;
+
+  var sql="SELECT * FROM user WHERE id=?";
+  db.query(sql,[id],function(err,results){
+    if(err)
+      console.log(err);
+    if(!results[0])
+      response.send(`
+      <script type = "text/javascript">alert("없는 아이디 입니다.");
+      location.href='/login';
+      </script>
+      `);
+    else
+    {
+
+      var user=results[0];
+      if(pw === user.pw){
+        response.cookie('authority',user.authority);
+        response.cookie('name',user.name);
+        response.send(`
+            <script type = "text/javascript">alert("로그인 성공");
+            location.href='/';
+            </script>
+            `);
+      }
+      else
+      {
+        response.send(`
+            <script type = "text/javascript">alert("비밀번호가 다릅니다.");
+            location.href='/login';
+            </script>
+            `);
+      }
+    }
+  });
+});
+
+app.get('/join', function(request, response){
+  var html = joinTemplate.html();
   response.send(html);
 });
 
-app.post('/login_process', function(request, response){
-  fs.readdir('./data/loginData', function(error, filelist){
-  });
-  if(true){     //로그인 맞으면
-    //쿠키 생성
-    response.redirect('/');
+app.post('/join/create_process',function(request,response){
+  console.log("createprocess");
+  var post = request.body;
+  console.log(post);
+  var userId = post.ID;
+  var userPw = post.password;
+  var userName = post.name;
+  var userAuthority = post.authority;
 
-  }
-  else{
-    alert("아이디 혹은 비밀번호가 틀렸습니다");
-    response.redirect('/login_page');
-  }
+    db.query('insert into user values(?,?,?,?)', [userId, userPw, userName, userAuthority], function (err, rows, fields) {
+      if (!err) {
+           response.send(`
+           <script type = "text/javascript">alert("회원가입 성공");
+           location.href='/login';
+           </script>
+           `);
+      } else {
+           response.redirect('/join');
+      }
+    });
+    //response.redirect('/login');
+  // fs.writeFile(`./UserData/${ID}`, PW, 'utf8', function(err){
+  //   response.redirect('/login');
+    //response.send(302,{Location:`/?id=${ID}`});
 });
+
 app.get('/board_page', function(request, response){
   db.query('SELECT * FROM board', function(error, boards){
     if(error){
@@ -105,13 +175,6 @@ app.get('/circles', function(request, response){
   response.send(html);
 });
 
-
-app.get('/board_page', function(request, response){
-  console.log('im in board');
-  var html = borderTemplate.html(request.query.id);
-});
-
-
 app.get('/circle_main', function(request, response){
   var html = circleTemplate.html();
   response.send(html);
@@ -127,7 +190,7 @@ app.get('/circle_main', function(request, response){
 app.post('/comment/createprocess', function(request, response){
   var post = request.body;
   var id = request.query.id;
-  var author = 'response.cookies.name';
+  var author = request.cookies.name;
   var description = post.comment;
   db.query(`INSERT INTO comment (author, description, id)
     VALUES(?, ?, ?)`,[author, description, id], function(error3, comments){
