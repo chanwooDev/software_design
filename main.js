@@ -19,7 +19,6 @@ var viewerTemplate = require('./lib/viewerTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
 
-var push = require('push.js');
 
 
 var mysql = require('mysql');
@@ -41,7 +40,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 
 app.get('/', function(request, response){
-  push.create('Hello World!');
   if(false){  // 쿠키 체크
     alert("로그인이 필요합니다");
     response.redirect('/');
@@ -126,13 +124,17 @@ app.get('/circle_main', function(request, response){
 // });
 
 
-app.post('/comment_createprocess', function(request, response){
+app.post('/comment/createprocess', function(request, response){
   var post = request.body;
-  var author = post.author;
+  var id = request.query.id;
+  var author = 'response.cookies.name';
   var description = post.comment;
-  fs.writeFile(`data/${author}`, description, 'utf8', function(err) {
-    response.redirect('/comment');
+  db.query(`INSERT INTO comment (author, description, id)
+    VALUES(?, ?, ?)`,[author, description, id], function(error3, comments){
+      if(error3){
+        throw error3;
+      }
   });
+  response.redirect(`/board_page?id=${id}`);
 });
-
 app.listen(3000);
