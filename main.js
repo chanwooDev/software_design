@@ -126,13 +126,17 @@ app.get('/circle_main', function(request, response){
 // });
 
 
-app.post('/comment_createprocess', function(request, response){
+app.post('/comment/createprocess', function(request, response){
   var post = request.body;
-  var author = post.author;
+  var id = request.query.id;
+  var author = response.cookies.name;
   var description = post.comment;
-  fs.writeFile(`data/${author}`, description, 'utf8', function(err) {
-    response.redirect('/comment');
+  db.query(`INSERT INTO comment (author, description, id)
+    VALUES(?, ?, ?)`,[author, description, id], function(error3, comments){
+      if(error3){
+        throw error3;
+      }
   });
+  response.redirect(`/board_page?id=${id}`);
 });
-
 app.listen(3000);
