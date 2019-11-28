@@ -16,14 +16,12 @@ var circleMainTemplate = require('./lib/circleMainTemplate.js');
 var circleTemplate = require('./lib/circleTemplate.js');
 var boardTemplate = require('./lib/boardTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
+var joinTemplate = require('./lib/joinTemplate.js');
 var viewerTemplate = require('./lib/viewerTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
 
-
-
 var mysql = require('mysql');
-var board_page = require('./routes/board_page.js')(app);
 var db = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
@@ -32,6 +30,8 @@ var db = mysql.createConnection({
   port : '3300'
 });
 db.connect();
+var board_page = require('./routes/board_page.js')(app);
+
 
 app.use('/board_page', board_page);
 app.use('/static', express.static(__dirname + '/public'));
@@ -41,9 +41,13 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 
 app.get('/', function(request, response){
-  if(false){  // 쿠키 체크
-    alert("로그인이 필요합니다");
-    response.redirect('/');
+  if(!(request.cookies.name)){  // 쿠키 체크
+    response.send(`
+      <script type = "text/javascript">alert("로그인이 필요합니다.");
+      location.href='/login';
+      </script>
+      `);
+      next();
   }
 
 
@@ -73,12 +77,11 @@ app.post('/login_process', function(request,response){
   var post=request.body;
   var id=post.ID;
   var pw=post.PW;
-  
-  var sql="SELECT * FROM user WHERE ID=?";
-  mysql.query(sql,[id],function(err,results){
+
+  var sql="SELECT * FROM user WHERE id=?";
+  db.query(sql,[id],function(err,results){
     if(err)
       console.log(err);
-
     if(!results[0])
       response.send(`
       <script type = "text/javascript">alert("없는 아이디 입니다.");
@@ -87,9 +90,11 @@ app.post('/login_process', function(request,response){
       `);
     else
     {
+
       var user=results[0];
-      if(pw === user.PW){
-        response.cookie('authority',results.AUTHORITY);
+      if(pw === user.pw){
+        response.cookie('authority',user.authority);
+        response.cookie('name',user.name);
         response.send(`
             <script type = "text/javascript">alert("로그인 성공");
             location.href='/';
@@ -113,7 +118,7 @@ app.get('/join', function(request, response){
   response.send(html);
 });
 
-app.post('/create_process',function(request,response){
+app.post('/join/create_process',function(request,response){
   console.log("createprocess");
   var post = request.body;
   console.log(post);
@@ -121,8 +126,8 @@ app.post('/create_process',function(request,response){
   var userPw = post.password;
   var userName = post.name;
   var userAuthority = post.authority;
-  
-    mysql.query('insert into user values(?,?,?,?)', [userId, userPw, userName, userAuthority], function (err, rows, fields) {
+
+    db.query('insert into user values(?,?,?,?)', [userId, userPw, userName, userAuthority], function (err, rows, fields) {
       if (!err) {
            response.send(`
            <script type = "text/javascript">alert("회원가입 성공");
@@ -184,7 +189,7 @@ app.get('/circle_main', function(request, response){
 app.post('/comment/createprocess', function(request, response){
   var post = request.body;
   var id = request.query.id;
-  var author = 'response.cookies.name';
+  var author = request.cookies.name;
   var description = post.comment;
   db.query(`INSERT INTO comment (author, description, id)
     VALUES(?, ?, ?)`,[author, description, id], function(error3, comments){
@@ -195,4 +200,3 @@ app.post('/comment/createprocess', function(request, response){
   response.redirect(`/board_page?id=${id}`);
 });
 app.listen(3000);
-
