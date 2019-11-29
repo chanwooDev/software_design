@@ -15,9 +15,9 @@ var loginTemplate = require('./lib/loginTemplate.js');
 var circleMainTemplate = require('./lib/circleMainTemplate.js');
 var circleTemplate = require('./lib/circleTemplate.js');
 var boardTemplate = require('./lib/boardTemplate.js');
+var formTemplate = require('./lib/formTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
 var joinTemplate = require('./lib/joinTemplate.js');
-var viewerTemplate = require('./lib/viewerTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
 
@@ -47,19 +47,18 @@ app.get('/', function(request, response){
       location.href='/login';
       </script>
       `);
-      next();
   }
-
-
-  db.query(`SELECT * FROM board`, function(error, result){
-    var boards = ``;
-    for(var i=result.length-1; i>=0; i--){
-      var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].date);
-      boards += boardPointer;
-    }
-    var html = homeTemplate.html(boards);
-    response.send(html);
-  });
+  else{
+    db.query(`SELECT * FROM board`, function(error, result){
+      var boards = ``;
+      for(var i=result.length-1; i>=0; i--){
+        var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].date);
+        boards += boardPointer;
+      }
+      var html = homeTemplate.html(boards);
+      response.send(html);
+    });
+  }
 });
 
 app.get('/login', function(request, response){
@@ -144,34 +143,33 @@ app.post('/join/create_process',function(request,response){
     //response.send(302,{Location:`/?id=${ID}`});
 });
 
-app.get('/board_page', function(request, response){
+
+app.get('/circle', function(request, response){
   db.query('SELECT * FROM board', function(error, boards){
     if(error){
       throw error;
     }
-    db.query(`SELECT * FROM board WHERE id=?`,[request.query.id], function(error2, board){
+    db.query(`SELECT * FROM board WHERE location=?`,[request.query.location], function(error2, board){
       if(error2){
         throw error2;
       }
-      db.query(`SELECT * FROM comment WHERE id=?`,[request.query.id], function(error3, comments){
+      db.query(`SELECT * FROM comment WHERE id=?`,[board[0].id], function(error3, comments){
         if(error3){
           throw error3;
         }
         var comment = '';
+        var average =0;
         for(var i=0; i<comments.length; i++){
-          comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
+          comment += circleTemplate.comment_form(comments[i].author, comments[i].description, comments[i].score);
+          average += comments[i].score;
         }
-        var create_form = boardTemplate.create_form(request.query.id);
+        average = average/comments.length;
+        var create_form = circleTemplate.create_form(board[0].id, board[0].location,average);
         var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
         response.send(html);
       });
     });
   });
-});
-app.get('/circles', function(request, response){
-  console.log(request.query.id);
-  var html = circleTemplate.html();//title,author,date,image,body,list
-  response.send(html);
 });
 
 app.get('/circle_main', function(request, response){
@@ -179,24 +177,28 @@ app.get('/circle_main', function(request, response){
   response.send(html);
 });
 
-// app.get('/viewer', function(request, response){
-//   console.log('viewer!!');
-//   var html = viewerTemplate.html(request.query.id);
-//   response.send(html);
-// });
-
 
 app.post('/comment/createprocess', function(request, response){
   var post = request.body;
   var id = request.query.id;
   var author = request.cookies.name;
   var description = post.comment;
-  db.query(`INSERT INTO comment (author, description, id)
-    VALUES(?, ?, ?)`,[author, description, id], function(error3, comments){
+  var score = 1;
+  console.log(post.score);
+  if(post.score)
+    score = post.score;
+  db.query(`INSERT INTO comment (author, description, id, score)
+    VALUES(?, ?, ?, ?)`,[author, description, id, score], function(error3, comments){
       if(error3){
         throw error3;
       }
+      if(request.query.type)
+        response.redirect(`/circle?location=${request.query.location}`);
+      else {
+        response.redirect(`/board_page?id=${id}`);
+      }
+
   });
-  response.redirect(`/board_page?id=${id}`);
+
 });
 app.listen(3000);
