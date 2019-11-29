@@ -58,6 +58,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	});
 	router.get('/create', function(request, response){
 		var location = request.query.location;
+		var type = request.query.type;
 		if(request.query.location === 'main')
 		{
 			if(request.cookies.authority === "Master"){
@@ -70,7 +71,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 		  var html = boardTemplate.html('','','','','','',`
 			<div class="card my-4">
-			  <form action="/board_page/create_process?location=${location}" method="post">
+			  <form action="/board_page/create_process?location=${location}&type=${type}" method="post">
 			      <div class="card my-4">
   						<h5 class="card-header">게시글 작성</h5>
 							<div class="card-body">
@@ -95,15 +96,18 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	  var date = post.date;
 		var author = request.cookies.name;
 		var location = request.query.location;
-		console.log(location);
+		var type = request.query.type;
 		db.query(`
-			INSERT INTO board (title, author, date, image, description, location)
-				VALUES(?, ?, NOW(), ?, ?, ?)`,
-			[title, author, 1, description, location],
+			INSERT INTO board (title, author, date, image, description, location, type)
+				VALUES(?, ?, NOW(), ?, ?, ?, ?)`,
+			[title, author, 1, description, location, type],
 			function(error, result){
 				if(error){
 					throw error;
 				}
+				if(type == 'introduce')
+					response.redirect(`/circle?id=${result.insertId}&location=${request.query.location}&type=${type}`);
+				else
 					response.redirect(`/board_page?id=${result.insertId}`);
 
 		});

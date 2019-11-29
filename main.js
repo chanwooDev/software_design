@@ -194,10 +194,11 @@ app.get('/facility_reservation',function(request,response){
 });
 
 app.get('/circle', function(request, response){
+    var btnPanel = '';
     db.query("SELECT * FROM user WHERE name=?",[request.cookies.name],function(err,result){
       if(!err){
         var buttonOption = '';
-        if((result[0].authority === "Master") && (result[0].circle === `${request.query.id}`)){
+        if((result[0].authority === "Master") && (result[0].circle === `${request.query.location}`)){
           buttonOption = buttonOption + '신청현황 보기';
         }
         else if(result[0].authority === "Member" || (result[0].authority === "Master" && result[0].circle != `${request.query.id}`)){
@@ -213,15 +214,15 @@ app.get('/circle', function(request, response){
           for(var i=0; i<result.length; i++){
             circlesArray[i] = result[i].name;
           }
+          var location = request.query.location;
+          var type = request.query.type;
           var circleCategory = formTemplate.circleList(circlesArray);
-            db.query(`SELECT * FROM board WHERE location=?`,[request.query.location], function(error2, board){
+            db.query(`SELECT * FROM board WHERE location=? AND type=?`,[location, type], function(error2, board){
             if(error2){
               throw error2;
             }
-            console.log(request.query.location);
             if(!board[0]){
-              var location = request.query.location;
-              response.redirect(`/board_page/create?location=${location}` + '소개');
+              response.redirect(`/board_page/create?location=${location}&type=introduce`);
             }
             else{
               db.query(`SELECT * FROM comment WHERE id=?`,[board[0].id], function(error3, comments){
@@ -235,8 +236,8 @@ app.get('/circle', function(request, response){
                   average += comments[i].score;
                 }
                 average = average/comments.length;
-                var create_form = circleTemplate.create_form(board[0].id, board[0].location,average);
-                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form);
+                var create_form = circleTemplate.create_form(board[0].id, board[0].location,board[0].type,average);
+                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form, btnPanel);
                 response.send(html);
               });
             }
@@ -277,7 +278,7 @@ app.get('/circle_page', function(request, response) {
         for (var i = 0; i < comments.length; i++) {
           comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
         }
-        var create_form = circleMainTemplate.create_form(request.query.id, request.query.location);
+        var create_form = circleMainTemplate.create_form(request.query.id, request.query.location, request.query.type);
         var html = circleMainTemplate.html_board(request.query.location, '', '',board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
         response.send(html);
       });
@@ -293,8 +294,9 @@ app.post('/comment/createprocess', function(request, response) {
   var id = request.query.id;
   var author = request.cookies.name;
   var description = post.comment;
+  var location = request.query.location;
+  var type = request.query.type;
   var score = 1;
-  console.log(post.score);
   if(post.score)
     score = post.score;
   db.query(`INSERT INTO comment (author, description, id, score)
@@ -302,9 +304,11 @@ app.post('/comment/createprocess', function(request, response) {
       if(error3){
         throw error3;
       }
+      console.log(request.query.type);
       if(request.query.type)
-         response.redirect(`/${page}?id=${id}&location=${request.query.location}`);
+         response.redirect(`/${page}?id=${id}&location=${location}&type=${type}`);
       else {
+        console.log('엥?');
         response.redirect(`/board_page?id=${id}`);
       }
   });
