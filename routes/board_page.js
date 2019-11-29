@@ -31,7 +31,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
-
+  
 	router.get('/', function(request, response){
 	  db.query('SELECT * FROM board', function(error, boards){
 	    if(error){
@@ -83,7 +83,6 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			  </form>
 			</div>
 		  `,'');
-
 		  response.send(html);
 		});
 
@@ -144,14 +143,12 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			});
 		});
 	});
-
 	router.post('/update_process', function(request, response){
 		var post = request.body;
 		db.query('UPDATE board SET title=?, description=?,date=NOW() WHERE id=?', [post.title, post.description, post.id], function(error, result){
 			response.redirect(`/board_page?id=${post.id}`);
 		});
 	});
-
 	router.post('/delete_process', function(request, response){
 		var id = request.query.id;
  	 db.query('DELETE FROM board WHERE id=?', [id], function(error, result){

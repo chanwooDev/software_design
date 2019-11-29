@@ -16,6 +16,7 @@ var loginTemplate = require('./lib/loginTemplate.js');
 var circleCreateTemplate = require('./lib/circleCreateTemplate.js');
 var circleMainTemplate = require('./lib/circleMainTemplate.js');
 var circleTemplate = require('./lib/circleTemplate.js');
+var showApplyList = require('./lib/showApplyList.js');
 var boardTemplate = require('./lib/boardTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
 var formTemplate = require('./lib/formTemplate.js');
@@ -52,6 +53,10 @@ app.get('/', function(request, response){
       `);
   }
   else{
+    db.query(`SELECT * FROM board`, function(error, result){
+      var boards = ``;
+      for(var i=result.length-1; i>=0; i--){
+        var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].date);
     db.query(`SELECT * FROM board WHERE location = 'main'`, function(error, result){
       console.log(result[0]);
       var boards = ``;
@@ -79,7 +84,6 @@ app.get('/join', function(request, response){
 
 app.post('/join/create_process',function(request,response){
   var post = request.body;
-
   var userId = post.ID;
   var userPw = post.password;
   var userName = post.name;
@@ -126,7 +130,6 @@ app.post('/login_process', function(request,response){
         response.cookie('authority',user.authority);
         response.cookie('name',user.name);
         var url='/';
-
         if(user.authority === "Master" && user.circle === null){
           url = url + 'circle_create';
         }
@@ -162,10 +165,8 @@ app.get('/circle_create',function(request,response){
 
 app.post('/circle_create/create_process',function(request,response){
   var post = request.body;
-
   var circle_name = post.circle_name;
   var name = request.cookies.name;
-
   db.query('UPDATE user SET circle=? WHERE name=?', [circle_name,name], function (err, rows, fields) {
     if (!err) {
       db.query('INSERT INTO circles (name) VALUES(?)',[circle_name],function(error,row,fields){
@@ -196,20 +197,24 @@ app.get('/facility_reservation',function(request,response){
   }
 });
 
+
 app.get('/circle', function(request, response){
-    var btnPanel = '';
     db.query("SELECT * FROM user WHERE name=?",[request.cookies.name],function(err,result){
       if(!err){
         var buttonOption = '';
+        var buttonProcess = '';
         if((result[0].authority === "Master") && (result[0].circle === `${request.query.location}`)){
           buttonOption = buttonOption + '신청현황 보기';
+          buttonProcess = buttonProcess + '/showApplyList';
         }
         else if(result[0].authority === "Member" || (result[0].authority === "Master" && result[0].circle != `${request.query.id}`)){
           if(result[0].circle === `${request.query.id}`){
             buttonOption = buttonOption + '탈퇴신청';
+            buttonProcess = buttonProcess + '/withdraw_apply';
           }
           else{
             buttonOption = buttonOption + '가입신청';
+            buttonProcess = buttonProcess + '/join_apply'
           }//동아리 복수로 선택할수 있어요?
         }
         db.query(`SELECT * FROM circles`,function(error,result){//함수로 빼기
@@ -240,13 +245,106 @@ app.get('/circle', function(request, response){
                 }
                 average = average/comments.length;
                 var create_form = circleTemplate.create_form(board[0].id, board[0].location,board[0].type,average);
-                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form, btnPanel);
+                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form, buttonOption,buttonProcess);
                 response.send(html);
               });
             }
           });
        });
       }
+  });
+});
+app.get('/showApplyList',function(request,response){
+  var applyList='';
+  db.query(`SELECT * FROM circleJoin`,function(error,result){
+    if(result[0]){
+      for(var i=0; i<result.length; i++){
+        if(result[i].circle === request.query.id){
+          applyList = applyList + showApplyList.showList(result[i].name,'가입');
+        }
+      }
+    };
+    db.query(`SELECT * FROM circleWithdraw`,function(error,results){
+      if(results[0]){
+        console.log("withdraw exist!");
+        for(var i=0; i<results.length; i++){
+          console.log(results[i].circle);
+          console.log(request.query.id);
+          if(results[i].circle === request.query.id){
+            applyList = applyList + showApplyList.showList(results[i].name,'탈퇴');
+          }
+        }
+      };
+      console.log(applyList);
+      var html = showApplyList.html(applyList);
+      response.send(html);
+    });
+  });
+});
+
+app.get('/join_apply',function(request,response){
+  db.query('insert into circleJoin (circle,name) values(?,?)', [request.query.id,request.cookies.name], function (err, rows, fields) {
+    if (!err) {
+      console.log(request.query.id);
+         response.send(`
+         <script type = "text/javascript">alert("가입을 신청하였습니다.");
+         location.href='/circles/?id=${request.query.id}';
+         </script>
+         `);
+    } else {
+         console.log("circle join process err");
+    }
+  });
+});
+
+app.get('/withdraw_apply',function(request,response){
+  db.query('insert into circleWithdraw (circle,name) values(?,?)', [request.query.id,request.cookies.name], function (err, rows, fields) {
+    if (!err) {
+      console.log(request.query.id);
+         response.send(`
+         <script type = "text/javascript">alert("탈퇴를 신청하였습니다.");
+         location.href='/circles/?id=${request.query.id}';
+         </script>
+         `);
+    } else {
+         console.log("circle withdraw process err");
+    }
+  });
+});
+
+app.get('/join_success',function(request,response){
+  var name = request.query.name;
+
+  db.query("SELECT * FROM user WHERE name=?",[request.cookies.name],function(err,results){
+    var circle = results[0].circle;
+    
+    db.query('UPDATE user SET circle=? WHERE name=?', [circle,name], function (err, rows, fields){
+      if(!err){
+        db.query('DELETE FROM circleJoin WHERE name=?',[name],function(err,result){
+          response.send(`<script type = "text/javascript">alert("가입을 승낙하였습니다.");
+          location.href='/showApplyList/?id=${circle}';
+          </script>`);
+        });
+      }
+    });
+  });
+});
+
+app.get('/withdraw_success',function(request,response){
+  var name = request.query.name;
+
+  db.query("SELECT * FROM user WHERE name=?",[request.cookies.name],function(err,results){
+    var circle = results[0].circle;
+
+    db.query('UPDATE user SET circle=? WHERE name=?', [null,name], function (err, rows, fields){
+      if(!err){
+        db.query('DELETE FROM circleWithdraw WHERE name=?',[name],function(err,result){
+          response.send(`<script type = "text/javascript">alert("탈퇴를 승낙하였습니다.");
+          location.href='/showApplyList/?id=${circle}';
+          </script>`);
+        });
+      }
+    });
   });
 });
 
@@ -332,10 +430,12 @@ app.post('/comment/createprocess', function(request, response) {
     var page = 'board_page';
   else
     var page = 'circle';
+
   var post = request.body;
   var id = request.query.id;
   var author = request.cookies.name;
   var description = post.comment;
+
   var location = request.query.location;
   var type = request.query.type;
   var score = 1;
@@ -356,3 +456,4 @@ app.post('/comment/createprocess', function(request, response) {
   });
 });
 app.listen(3000);
+
