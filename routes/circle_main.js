@@ -1,3 +1,4 @@
+
 /*jshint esversion: 6 */
 module.exports = function(app) { //함수로 만들어 객체 router을 전달받음
   var express = require('express');
@@ -78,7 +79,6 @@ module.exports = function(app) { //함수로 만들어 객체 router을 전달�
     var author = request.cookies.name;
     var location = request.query.location;
 		var type = post.post_type;
-		console.log()
     db.query(`
 			INSERT INTO board (title, author, date, image, description, location, type)
 				VALUES(?, ?, NOW(), ?, ?, ?, ?)`,
