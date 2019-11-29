@@ -13,6 +13,7 @@ var compression = require('compression')
 var loginTemplate = require('./lib/loginTemplate.js');
 var circleMainTemplate = require('./lib/circleMainTemplate.js');
 var circleTemplate = require('./lib/circleTemplate.js');
+var reservTemplate = require('./lib/reservTemplate.js');
 var boardTemplate = require('./lib/boardTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
 var joinTemplate = require('./lib/joinTemplate.js');
@@ -31,10 +32,12 @@ var db = mysql.createConnection({
 db.connect();
 var board_page = require('./routes/board_page.js')(app);
 var circle_main = require('./routes/circle_main.js')(app);
+var reserv_main = require('./routes/reserv_main.js')(app);
 
 
 app.use('/board_page', board_page);
 app.use('/circle_main', circle_main);
+app.use('/reserv_main', reserv_main);
 app.use('/static', express.static(__dirname + '/public'));
 
 app.use(cookieParser());
@@ -175,18 +178,32 @@ app.get('/circles', function(request, response) {
 });
 
 app.get('/circle_main', function(request, response) {
-
-  db.query(`SELECT * FROM board WHERE location = ?`, [request.query.location], function(error, result) {
+  db.query(`SELECT * FROM board WHERE location = ? AND type = ?`, [request.query.location,request.query.type], function(error, result) {
+    console.log(result);
     var boards = ``;
     for (var i = result.length - 1; i >= 0; i--) {
-      var boardPointer = circleMainTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location);
+      var boardPointer = circleMainTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type);
       boards += boardPointer;
     }
 
-    var html = circleMainTemplate.html(request.query.location, boards, '');
+    var html = circleMainTemplate.html(request.query.location, boards, '','');
     response.send(html);
   });
 });
+
+// app.get('/circle_main/general', function(request, response) {
+//
+//   db.query(`SELECT * FROM board WHERE location = ? AND type = ?`, [request.query.location,request.query.type], function(error, result) {
+//     var boards = ``;
+//     for (var i = result.length - 1; i >= 0; i--) {
+//       var boardPointer = circleMainTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type);
+//       boards += boardPointer;
+//     }
+//
+//     var html = circleMainTemplate.html(request.query.location, boards, '','/general');
+//     response.send(html);
+//   });
+// });
 
 app.get('/circle_page', function(request, response) {
   console.log(request.query.location); ////////location 쿼리가 안넘어옴
@@ -206,19 +223,78 @@ app.get('/circle_page', function(request, response) {
         for (var i = 0; i < comments.length; i++) {
           comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
         }
-        var create_form = circleMainTemplate.create_form(request.query.id, request.query.location);
-        var html = circleMainTemplate.html_board(request.query.location, '', '',board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
+        var create_form = circleMainTemplate.create_form(request.query.id, request.query.location,request.query.type);
+        var html = circleMainTemplate.html_board(request.query.location, '', '',board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form,request.query.type);
         response.send(html);
       });
     });
   });
 });
-// app.get('/viewer', function(request, response){
-//   console.log('viewer!!');
-//   var html = viewerTemplate.html(request.query.id);
-//   response.send(html);
+
+// app.get('/circle_page/general', function(request, response) {
+//   db.query('SELECT * FROM board', function(error, boards) {
+//     if (error) {
+//       throw error;
+//     }
+//     db.query(`SELECT * FROM board WHERE id=?`, [request.query.id], function(error2, board) {
+//       if (error2) {
+//         throw error2;
+//       }
+//       db.query(`SELECT * FROM comment WHERE id=?`, [request.query.id], function(error3, comments) {
+//         if (error3) {
+//           throw error3;
+//         }
+//         var comment = '';
+//         for (var i = 0; i < comments.length; i++) {
+//           comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
+//         }
+//         var create_form = circleMainTemplate.create_form(request.query.id, request.query.location, request.query.type);
+//         var html = circleMainTemplate.html_board(request.query.location, '', '',board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form, request.query.type);
+//         response.send(html);
+//       });
+//     });
+//   });
 // });
 
+//////////////////////
+app.get('/reserv_main', function(request, response) {
+///query location = reservation
+  db.query(`SELECT * FROM board WHERE location = ?`, [request.query.location], function(error, result) {
+    var boards = ``;
+    for (var i = result.length - 1; i >= 0; i--) {
+      var boardPointer = reservTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location);
+      boards += boardPointer;
+    }
+
+    var html = reservTemplate.html(boards, '');
+    response.send(html);
+  });
+});
+app.get('/reserv_page', function(request, response) {
+  console.log(request.query.location); ////////location 쿼리가 안넘어옴
+  db.query('SELECT * FROM board', function(error, boards) {
+    if (error) {
+      throw error;
+    }
+    db.query(`SELECT * FROM board WHERE id=?`, [request.query.id], function(error2, board) {
+      if (error2) {
+        throw error2;
+      }
+      db.query(`SELECT * FROM comment WHERE id=?`, [request.query.id], function(error3, comments) {
+        if (error3) {
+          throw error3;
+        }
+        var comment = '';
+        for (var i = 0; i < comments.length; i++) {
+          comment += viewerTemplate.comment_form(comments[i].author, comments[i].description);
+        }
+        var create_form = reservTemplate.create_form(request.query.id, request.query.location);
+        var html = reservTemplate.html_board( '', '',board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
+        response.send(html);
+      });
+    });
+  });
+});
 
 app.post('/comment/createprocess', function(request, response) {
   if (request.query.location === 'main') ///////쿼리스트링 대응 필요
