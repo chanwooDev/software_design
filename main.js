@@ -19,7 +19,7 @@ var circleTemplate = require('./lib/circleTemplate.js');
 var reservationTemplate = require('./lib/reservationTemplate.js');
 var boardTemplate = require('./lib/boardTemplate.js');
 var homeTemplate = require('./lib/homeTemplate.js');
-var viewerTemplate = require('./lib/viewerTemplate.js');
+var formTemplate = require('./lib/formTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
 
@@ -27,9 +27,9 @@ var mysql = require('mysql');
 var db = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
-  password : '1234',
+  password : 'root',
   database : 'circle',
-  port : '3306'
+  port : '3300'
 });
 db.connect();
 var board_page = require('./routes/board_page.js')(app);
@@ -62,7 +62,7 @@ app.get('/', function(request, response){
         for(var i=0; i<result.length; i++){
           circlesArray[i] = result[i].name;
         }
-        var circleCategory = homeTemplate.circlesList(circlesArray);
+        var circleCategory = formTemplate.circleList(circlesArray);
         var html = homeTemplate.html(boards,circleCategory);
         response.send(html);
       });
@@ -77,7 +77,7 @@ app.get('/join', function(request, response){
 
 app.post('/join/create_process',function(request,response){
   var post = request.body;
- 
+
   var userId = post.ID;
   var userPw = post.password;
   var userName = post.name;
@@ -124,7 +124,7 @@ app.post('/login_process', function(request,response){
         response.cookie('authority',user.authority);
         response.cookie('name',user.name);
         var url='/';
-        
+
         if(user.authority === "Master" && user.circle === null){
           url = url + 'circle_create';
         }
@@ -160,10 +160,10 @@ app.get('/circle_create',function(request,response){
 
 app.post('/circle_create/create_process',function(request,response){
   var post = request.body;
- 
+
   var circle_name = post.circle_name;
   var name = request.cookies.name;
-  
+
   db.query('UPDATE user SET circle=? WHERE name=?', [circle_name,name], function (err, rows, fields) {
     if (!err) {
       db.query('INSERT INTO circles (name) VALUES(?)',[circle_name],function(error,row,fields){
@@ -193,29 +193,6 @@ app.get('/facility_reservation',function(request,response){
   }
 });
 
-app.get('/advertisement_create',function(request,response){
-  if(request.cookies.authority === "Master"){
-    var html = boardTemplate.html('','','','','','',`
-         <div class="card my-4">
-           <form action="/board_page/create_process" method="post">
-               <div class="card my-4">
-                    <h5 class="card-header">게시글 작성</h5>
-                     <div class="card-body">
-                     <input type="text" class="form-control" name="title" placeholder="title">
-               <textarea class="form-control" name="description" rows="10"placeholder="description"></textarea>
-             <button type="submit" class="btn btn-primary">Submit</button>
-               </div>
-            </div>
-           </form>
-         </div>
-        `,'');
-    response.send(html);
-  }
-  else{
-    response.send(`<script type = "text/javascript">alert("동아리장만 전체게시판을 작성할 수 있습니다.");
-    location.href='/';</script>`);
-  }
-})
 app.get('/circle', function(request, response){
     db.query("SELECT * FROM user WHERE name=?",[request.cookies.name],function(err,result){
       if(!err){
@@ -236,29 +213,34 @@ app.get('/circle', function(request, response){
           for(var i=0; i<result.length; i++){
             circlesArray[i] = result[i].name;
           }
-          var circleCategory = homeTemplate.circlesList(circlesArray);
+          var circleCategory = formTemplate.circleList(circlesArray);
             db.query(`SELECT * FROM board WHERE location=?`,[request.query.location], function(error2, board){
-        if(error2){
-          throw error2;
-        }
-        db.query(`SELECT * FROM comment WHERE id=?`,[board[0].id], function(error3, comments){
-          if(error3){
-            throw error3;
-          }
-          var comment = '';
-          var average =0;
-          for(var i=0; i<comments.length; i++){
-            comment += circleTemplate.comment_form(comments[i].author, comments[i].description, comments[i].score);
-            average += comments[i].score;
-          }
-          average = average/comments.length;
-          var create_form = circleTemplate.create_form(board[0].id, board[0].location,average);
-          console.log(circleCategory);//해결해야함
-          var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
-          response.send(html);
-        });
-      });
-
+            if(error2){
+              throw error2;
+            }
+            console.log(request.query.location);
+            if(!board[0]){
+              var location = request.query.location;
+              response.redirect(`/board_page/create?location=${location}` + '소개');
+            }
+            else{
+              db.query(`SELECT * FROM comment WHERE id=?`,[board[0].id], function(error3, comments){
+                if(error3){
+                  throw error3;
+                }
+                var comment = '';
+                var average =0;
+                for(var i=0; i<comments.length; i++){
+                  comment += circleTemplate.comment_form(comments[i].author, comments[i].description, comments[i].score);
+                  average += comments[i].score;
+                }
+                average = average/comments.length;
+                var create_form = circleTemplate.create_form(board[0].id, board[0].location,average);
+                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form);
+                response.send(html);
+              });
+            }
+          });
        });
       }
   });
@@ -306,7 +288,7 @@ app.post('/comment/createprocess', function(request, response) {
   if (request.query.location === 'main') ///////쿼리스트링 대응 필요
     var page = 'board_page';
   else
-    var page = '/circle?';
+    var page = 'circle';
   var post = request.body;
   var id = request.query.id;
   var author = request.cookies.name;
@@ -328,4 +310,3 @@ app.post('/comment/createprocess', function(request, response) {
   });
 });
 app.listen(3000);
-

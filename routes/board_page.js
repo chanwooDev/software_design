@@ -57,10 +57,20 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	  });
 	});
 	router.get('/create', function(request, response){
-		  var date;	//title,author,date,image,body,list,comment, create_form
+		var location = request.query.location;
+		if(request.query.location === 'main')
+		{
+			if(request.cookies.authority === "Master"){
+			}
+			else{
+				response.send(`<script type = "text/javascript">alert("동아리장만 전체게시판을 작성할 수 있습니다.");
+				location.href='/';</script>`);
+			}
+		}
+
 		  var html = boardTemplate.html('','','','','','',`
 			<div class="card my-4">
-			  <form action="/board_page/create_process" method="post">
+			  <form action="/board_page/create_process?location=${location}" method="post">
 			      <div class="card my-4">
   						<h5 class="card-header">게시글 작성</h5>
 							<div class="card-body">
@@ -72,6 +82,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			  </form>
 			</div>
 		  `,'');
+
 		  response.send(html);
 		});
 
@@ -84,6 +95,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	  var date = post.date;
 		var author = request.cookies.name;
 		var location = request.query.location;
+		console.log(location);
 		db.query(`
 			INSERT INTO board (title, author, date, image, description, location)
 				VALUES(?, ?, NOW(), ?, ?, ?)`,
