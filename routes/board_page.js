@@ -13,7 +13,6 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var circleTemplate = require('../lib/circleTemplate.js');
 	var boardTemplate = require('../lib/boardTemplate.js');
 	var homeTemplate = require('../lib/homeTemplate.js');
-	var formTemplate = require('../lib/formTemplate.js');
 	var helmet = require('helmet');
 	var cookieParser = require('cookie-parser');
 	var router = express.Router();
@@ -22,9 +21,9 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var db = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
-	  password : 'root',
-	  database : 'CIRCLE',
-	  port : '3300'
+	  password : '1234',
+	  database : 'circle',
+	  port : '3306'
 	});
 	db.connect();
 	router.use('/static', express.static(__dirname + '/public'));
@@ -32,30 +31,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
 
-	router.get('/', function(request, response){
-	  db.query('SELECT * FROM board', function(error, boards){
-	    if(error){
-	      throw error;
-	    }
-	    db.query(`SELECT * FROM board WHERE id=?`,[request.query.id], function(error2, board){
-	      if(error2){
-	        throw error2;
-	      }
-	      db.query(`SELECT * FROM comment WHERE id=?`,[request.query.id], function(error3, comments){
-	        if(error3){
-	          throw error3;
-	        }
-	        var comment = '';
-	        for(var i=0; i<comments.length; i++){
-	          comment += formTemplate.comment_form(comments[i].author, comments[i].description);
-	        }
-	        var create_form = formTemplate.create_form(request.query.id);
-	        var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
-	        response.send(html);
-	      });
-	    });
-	  });
-	});
+
 	router.get('/create', function(request, response){
 		  var date;	//title,author,date,image,body,list,comment, create_form
 		  var html = boardTemplate.html('','','','','','',`
@@ -77,17 +53,17 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 
 	router.post('/create_process', function(request, response){
-	  //var html = circleTemplate.html();
+	  var html = circleTemplate.html();
 	  var post = request.body;
 	  var title = post.title;
 	  var description = post.description;
+	  var location = request.query.location;
+	  var name = request.cookies.name;
 	  var date = post.date;
-		var author = request.cookies.name;
-		var location = request.query.location;
 		db.query(`
 			INSERT INTO board (title, author, date, image, description, location)
 				VALUES(?, ?, NOW(), ?, ?, ?)`,
-			[title, author, 1, description, location],
+			[title, name, 1,description,location],
 			function(error, result){
 				if(error){
 					throw error;
@@ -128,14 +104,12 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			});
 		});
 	});
-
 	router.post('/update_process', function(request, response){
 		var post = request.body;
 		db.query('UPDATE board SET title=?, description=?,date=NOW() WHERE id=?', [post.title, post.description, post.id], function(error, result){
 			response.redirect(`/board_page?id=${post.id}`);
 		});
 	});
-
 	router.post('/delete_process', function(request, response){
 		var id = request.query.id;
  	 db.query('DELETE FROM board WHERE id=?', [id], function(error, result){
