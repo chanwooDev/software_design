@@ -31,14 +31,15 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
 
-
+////////안들어옴
 	router.get('/create', function(request, response){
+		console.log("circle_main/create");
 		  var date;	//title,author,date,image,body,list,comment, create_form
-		  var html = boardTemplate.html('','','','','','',`
+		  var html = circleMainTemplate.html(request.query.location,'',`
 			<div class="card my-4">
-			  <form action="/board_page/create_process" method="post">
+			  <form action="/circle_main/create_process?location=${request.query.location}" method="post">
 			      <div class="card my-4">
-  						<h5 class="card-header">게시글 작성</h5>
+  						<h5 class="card-header">동아리게시글 작성</h5>
 							<div class="card-body">
 							<input type="text" class="form-control" name="title" placeholder="title">
 			      <textarea class="form-control" name="description" rows="10"placeholder="description"></textarea>
@@ -47,19 +48,21 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 				</div>
 			  </form>
 			</div>
-		  `,'');
+		  `);
 		  response.send(html);
 		});
 
 
 	router.post('/create_process', function(request, response){
 	  //var html = circleTemplate.html();
+		console.log("Please");
 	  var post = request.body;
 	  var title = post.title;
 	  var description = post.description;
 	  var date = post.date;
 		var author = request.cookies.name;
 		var location = request.query.location;
+		console.log(location);
 		db.query(`
 			INSERT INTO board (title, author, date, image, description, location)
 				VALUES(?, ?, NOW(), ?, ?, ?)`,
@@ -68,8 +71,8 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 				if(error){
 					throw error;
 				}
-					response.redirect(`/board_page?id=${result.insertId}`);
-
+					console.log("Please");
+					response.redirect(`/circle_main?location=${request.query.location}`);
 		});
 	});
 
@@ -87,7 +90,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 					}
 					var html = boardTemplate.html(``,`${result[0].author}`,'','',`
 					<div class="card my-4">
-						<form action="/board_page/update_process" method="post">
+						<form action="/circle_main/update_process" method="post">
 							  <input type="hidden" name="id" value="${id}">
 								<div class="card my-4">
 									<h5 class="card-header">게시글 작성</h5>
@@ -108,7 +111,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	router.post('/update_process', function(request, response){
 		var post = request.body;
 		db.query('UPDATE board SET title=?, description=?,date=NOW() WHERE id=?', [post.title, post.description, post.id], function(error, result){
-			response.redirect(`/board_page?id=${post.id}`);
+			response.redirect(`/circle_main?id=${post.id}`);
 		});
 	});
 
