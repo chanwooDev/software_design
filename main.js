@@ -11,7 +11,7 @@ var sanitizeHtml = require('sanitize-html');
 
 var compression = require('compression');
 
-var joinTemplate = require('./lib/joinTemplate.js');
+
 var loginTemplate = require('./lib/loginTemplate.js');
 var circleCreateTemplate = require('./lib/circleCreateTemplate.js');
 var circleMainTemplate = require('./lib/circleMainTemplate.js');
@@ -74,7 +74,7 @@ app.get('/', function(request, response){
 });
 
 app.get('/join', function(request, response){
-  var html = joinTemplate.html();
+  var html = loginTemplate.join_html();
   response.send(html);
 });
 
@@ -100,7 +100,7 @@ app.post('/join/create_process',function(request,response){
 });
 
 app.get('/login', function(request, response){
-  var html = loginTemplate.html();
+  var html = loginTemplate.login_html();
   response.send(html);
 });
 
@@ -155,7 +155,7 @@ app.get('/logout_process',function(request,response){
 
 
 app.get('/circle_create',function(request,response){
-  var html=circleCreateTemplate.html();
+  var html=loginTemplate.circleCreate_html();
   response.send(html);
 });
 
@@ -328,7 +328,7 @@ app.get('/withdraw_success',function(request,response){
       if(!err){
         db.query('DELETE FROM circleWithdraw WHERE name=?',[name],function(err,result){
           response.send(`<script type = "text/javascript">alert("탈퇴를 승낙하였습니다.");
-          location.href='/showApplyList/?id=${circle}';
+          location.href='/showApplyList/?location=${circle}';
           </script>`);
         });
       }
