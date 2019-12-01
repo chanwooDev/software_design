@@ -60,8 +60,15 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	          comment += formTemplate.comment_form(comments[i].author, comments[i].description);
 	        }
 	        var create_form = formTemplate.create_form(request.query.id,request.query.location , null);
-	        var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
-	        response.send(html);
+					db.query(`SELECT * FROM circles`,function(error,result){
+						var circlesArray = new Array();
+						for(var i=0; i<result.length; i++){
+							circlesArray[i] = result[i].name;
+						}
+						var circleCategory = formTemplate.circleList(circlesArray);
+	        	var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form);
+	        	response.send(html);
+					});
 	      });
 	    });
 	  });
