@@ -13,6 +13,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var circleTemplate = require('../lib/circleTemplate.js');
 	var boardTemplate = require('../lib/boardTemplate.js');
 	var homeTemplate = require('../lib/homeTemplate.js');
+	var reservTemplate = require('../lib/reserveTemplate.js');
 	var helmet = require('helmet');
 	var cookieParser = require('cookie-parser');
 	var router = express.Router();
@@ -27,14 +28,13 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	});
 	db.connect();
 	router.use('/static', express.static(__dirname + '/public'));
-
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
 
 ////////안들어옴
 	router.get('/create', function(request, response){
 		  var date;	//title,author,date,image,body,list,comment, create_form
-		  var html = circleMainTemplate.html(request.query.location,'',`
+		  var html = reservTemplate.html('',`
 			<div class="card my-4">
 			  <form action="/reserv_main/create_process?location=${request.query.location}" method="post">
 			      <div class="card my-4">
@@ -47,7 +47,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 				</div>
 			  </form>
 			</div>
-		  `);
+		  `,''); //type 반영
 		  response.send(html);
 		});
 

@@ -18,7 +18,17 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var cookieParser = require('cookie-parser');
 	var router = express.Router();
 	var mysql = require('mysql');
-
+  var multer = require('multer');
+	var upload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'data/image');
+    },
+    filename: function (req, file, cb) {
+      cb(null, file.originalname);
+    }
+  }),
+});
 	var db = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
@@ -31,7 +41,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
-  
+
 	router.get('/', function(request, response){
 	  db.query('SELECT * FROM board', function(error, boards){
 	    if(error){
@@ -50,8 +60,15 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	          comment += formTemplate.comment_form(comments[i].author, comments[i].description);
 	        }
 	        var create_form = formTemplate.create_form(request.query.id,request.query.location , null);
-	        var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, '', comment, create_form);
-	        response.send(html);
+					db.query(`SELECT * FROM circles`,function(error,result){
+						var circlesArray = new Array();
+						for(var i=0; i<result.length; i++){
+							circlesArray[i] = result[i].name;
+						}
+						var circleCategory = formTemplate.circleList(circlesArray);
+	        	var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form);
+	        	response.send(html);
+					});
 	      });
 	    });
 	  });
@@ -71,12 +88,13 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 		  var html = boardTemplate.html('','','','','','',`
 			<div class="card my-4">
-			  <form action="/board_page/create_process?location=${location}&type=${type}" method="post">
+			  <form action="/board_page/create_process?location=${location}&type=${type}" method="post" enctype="multipart/form-data">
 			      <div class="card my-4">
   						<h5 class="card-header">게시글 작성</h5>
 							<div class="card-body">
 							<input type="text" class="form-control" name="title" placeholder="title">
 			      <textarea class="form-control" name="description" rows="10"placeholder="description"></textarea>
+						<input type='file' name='file'><br><br>
 			    <button type="submit" class="btn btn-primary">Submit</button>
 					</div>
 				</div>
@@ -87,7 +105,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 		});
 
 
-	router.post('/create_process', function(request, response){
+	router.post('/create_process',upload.single('file'), function(request, response){
 	  //var html = circleTemplate.html();
 	  var post = request.body;
 	  var title = post.title;
@@ -96,10 +114,14 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 		var author = request.cookies.name;
 		var location = request.query.location;
 		var type = request.query.type;
+		var image = 'none.jpg';
+		if(request.file)
+			image = request.file.originalname;
+			console.log(location);
 		db.query(`
 			INSERT INTO board (title, author, date, image, description, location, type)
 				VALUES(?, ?, NOW(), ?, ?, ?, ?)`,
-			[title, author, 1, description, location, type],
+			[title, author,image, description, location, type],
 			function(error, result){
 				if(error){
 					throw error;
