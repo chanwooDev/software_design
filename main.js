@@ -1,6 +1,6 @@
 
 /*jshint esversion: 6 */
-//CMS
+
 var express = require('express');
 var app = express();
 var fs = require('fs');
@@ -242,10 +242,11 @@ app.get('/circle', function(request, response){
                   comment += circleTemplate.comment_form(comments[i].author, comments[i].description, comments[i].score);
                   average += comments[i].score;
                 }
+                var btn = `<button type="submit" class="btn btn-primary" onclick="location.href='${buttonProcess}/?location=${location}'">${buttonOption}</button>`;
                 average = average/comments.length;
                 var create_form = circleTemplate.create_form(board[0].id, board[0].location,board[0].type,average);
                 console.log(board[0].image);
-                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, board[0].image, board[0].description, circleCategory, comment, create_form, buttonOption,buttonProcess, request.query.location);
+                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, board[0].image, board[0].description, circleCategory, comment, create_form,btn,location);
                 response.send(html);
               });
             }
@@ -357,10 +358,10 @@ app.get('/circle_main', function(request, response) {
       db.query(`SELECT * FROM board WHERE location = ? AND type = ?`, [request.query.location, request.query.type], function(error, result) {
         var boards = ``;
         for (var i = result.length - 1; i >= 0; i--) {
-          var boardPointer = circleMainTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type);
+          var boardPointer = circleMainTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type, result[i].image);
           boards += boardPointer;
         }
-        var html = circleMainTemplate.html(request.query.location, boards, '');
+        var html = circleMainTemplate.html(request.query.location,request.query.type, boards, 'none.jpg');
         response.send(html);
       });
     }
@@ -402,13 +403,21 @@ if(request.cookies.authority != 'Master')
 else{
   db.query(`SELECT * FROM board WHERE location = ?`, [request.query.location], function(error, result) {
     var boards = ``;
-    for (var i = result.length - 1; i >= 0; i--) {
-      var boardPointer = reservTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location);
-      boards += boardPointer;
+    if(result[0]){
+      for(var i=0; i<result.length; i++)
+       if(result[i].type === request.query.type){
+          //for (var i = result.length - 1; i >= 0; i--) {
+            var boardPointer = reservTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type);
+            boards += boardPointer;
+          }
+        var html = reservTemplate.html(boards, '', request.query.type, `<img class="img-fluid rounded" src="/data/image/${request.query.type}.jpg" alt="" width="850" height="200">`);
+        console.log(boards);
+        response.send(html);
     }
-
-    var html = reservTemplate.html(boards, '');
-    response.send(html);
+    else{
+      var html = reservTemplate.html(boards, '', request.query.type,`<img class="img-fluid rounded" src="/data/image/${request.query.type}.jpg" alt="" width="850" height="200">`);
+      response.send(html);
+    }
   });
  }
 });
