@@ -18,30 +18,20 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var cookieParser = require('cookie-parser');
 	var router = express.Router();
 	var mysql = require('mysql');
-  var multer = require('multer');
-	var upload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, 'data/image');
-    },
-    filename: function (req, file, cb) {
-      cb(null, file.originalname);
-    }
-  }),
-});
+
 	var db = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
-	  password : 'root',
+	  password : '1234',
 	  database : 'CIRCLE',
-	  port : '3300'
+	  port : '3306'
 	});
 	db.connect();
 	router.use('/static', express.static(__dirname + '/public'));
 
 	router.use(cookieParser());
 	router.use(bodyParser.urlencoded({ extended: false }));
-
+  
 	router.get('/', function(request, response){
 	  db.query('SELECT * FROM board', function(error, boards){
 	    if(error){
@@ -78,27 +68,37 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 				location.href='/';</script>`);
 			}
 		}
-
-		  var html = boardTemplate.html('','','','','','',`
-			<div class="card my-4">
-			  <form action="/board_page/create_process?location=${location}&type=${type}" method="post" enctype="multipart/form-data">
-			      <div class="card my-4">
-  						<h5 class="card-header">게시글 작성</h5>
-							<div class="card-body">
-							<input type="text" class="form-control" name="title" placeholder="title">
-			      <textarea class="form-control" name="description" rows="10"placeholder="description"></textarea>
-						<input type='file' name='file'><br><br>
-			    <button type="submit" class="btn btn-primary">Submit</button>
-					</div>
-				</div>
-			  </form>
-			</div>
-		  `,'');
-		  response.send(html);
+		
+		db.query('SELECT * FROM user WHERE name=?',[request.cookies.name],function(err,result){
+			if(result[0]){
+				if(result[0].circle === location && request.cookies.authority === "Master"){
+					var html = boardTemplate.html('','','','','','',`
+						<div class="card my-4">
+						<form action="/board_page/create_process?location=${location}&type=${type}" method="post">
+							<div class="card my-4">
+									<h5 class="card-header">게시글 작성</h5>
+										<div class="card-body">
+										<input type="text" class="form-control" name="title" placeholder="title">
+							<textarea class="form-control" name="description" rows="10"placeholder="description"></textarea>
+							<button type="submit" class="btn btn-primary">Submit</button>
+								</div>
+							</div>
+						</form>
+						</div>
+					`,'');
+					response.send(html);
+				}
+				else{
+					response.send(`<script type = "text/javascript">alert("아직 소개글이 생성되지 않았습니다.");
+					location.href='/';</script>`);
+				}; 
+			}
+			else{
+				console.log('result값이 없음');
+			}
 		});
-
-
-	router.post('/create_process',upload.single('file'), function(request, response){
+	});
+	router.post('/create_process', function(request, response){
 	  //var html = circleTemplate.html();
 	  var post = request.body;
 	  var title = post.title;
@@ -107,14 +107,10 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 		var author = request.cookies.name;
 		var location = request.query.location;
 		var type = request.query.type;
-		var image = 'none.jpg';
-		if(request.file)
-			image = request.file.originalname;
-			console.log(location);
 		db.query(`
 			INSERT INTO board (title, author, date, image, description, location, type)
 				VALUES(?, ?, NOW(), ?, ?, ?, ?)`,
-			[title, author,image, description, location, type],
+			[title, author, 1, description, location, type],
 			function(error, result){
 				if(error){
 					throw error;

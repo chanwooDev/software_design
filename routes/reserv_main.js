@@ -21,9 +21,9 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var db = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
-	  password : 'root',
+	  password : '1234',
 	  database : 'CIRCLE',
-	  port : '3300'
+	  port : '3306'
 	});
 	db.connect();
 	router.use('/static', express.static(__dirname + '/public'));
@@ -34,9 +34,10 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 ////////안들어옴
 	router.get('/create', function(request, response){
 		  var date;	//title,author,date,image,body,list,comment, create_form
-		  var html = circleMainTemplate.html(request.query.location,'',`
+		  console.log(request.query.type);
+		  var html = circleMainTemplate.html(request.query.location,request.query.type,'',`
 			<div class="card my-4">
-			  <form action="/reserv_main/create_process?location=${request.query.location}" method="post">
+			  <form action="/reserv_main/create_process?location=${request.query.location}&type=${request.query.type}" method="post">
 			      <div class="card my-4">
   						<h5 class="card-header">시설예약 게시글 작성</h5>
 							<div class="card-body">
@@ -54,24 +55,25 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 
 	router.post('/create_process', function(request, response){
 	  //var html = circleTemplate.html();
-		console.log("Please");
+		console.log("create_process");
 	  var post = request.body;
 	  var title = post.title;
 	  var description = post.description;
 	  var date = post.date;
 		var author = request.cookies.name;
 		var location = request.query.location;
+		var type = request.query.type;
 		console.log(location);
 		db.query(`
-			INSERT INTO board (title, author, date, image, description, location)
-				VALUES(?, ?, NOW(), ?, ?, ?)`,
-			[title, author, 1, description, location],
+			INSERT INTO board (title, author, date, image, description, location, type)
+				VALUES(?, ?, NOW(), ?, ?, ?, ?)`,
+			[title, author, 1, description, location, type],
 			function(error, result){
 				if(error){
 					throw error;
 				}
 					console.log("Please");
-					response.redirect(`/reserv_main?location=${request.query.location}`);
+					response.redirect(`/reserv_main?location=${request.query.location}&type=${request.query.type}`);
 		});
 	});
 
