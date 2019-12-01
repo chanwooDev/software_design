@@ -22,26 +22,28 @@ var formTemplate = require('./lib/formTemplate.js');
 var reservTemplate = require('./lib/reserveTemplate.js');
 var helmet = require('helmet');
 var cookieParser = require('cookie-parser');
-
 var mysql = require('mysql');
 var db = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
-  password : '1234',
+  password : 'root',
   database : 'circle',
-  port : '3306'
+  port : '3300'
 });
 db.connect();
-
 var board_page = require('./routes/board_page.js')(app);
 var circle_main = require('./routes/circle_main.js')(app);
 var reserv_main = require('./routes/reserv_main.js')(app);
+var upload = require('./routes/upload.js')();
+
+app.use('/board_page', board_page);
+
 app.use('/board_page', board_page);
 app.use('/circle_main', circle_main);
 app.use('/reserv_main', reserv_main);
-app.use('/static', express.static(__dirname + '/public'));
+app.use('/upload', upload);
 app.use('/data', express.static(__dirname + '/data'));
-
+app.use('/static', express.static(__dirname + '/public'));
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -54,11 +56,11 @@ app.get('/', function(request, response){
       `);
   }
   else{
-
       db.query(`SELECT * FROM board WHERE location = 'main'`, function(error, result){
       var boards = ``;
       for(var i=result.length-1; i>=0; i--){
-        var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].location, result[i].date);
+        var image = result[i].image;
+        var boardPointer = homeTemplate.boardPointer(result[i].title, result[i].author, image,result[i].id, result[i].location, result[i].date);
         boards += boardPointer;
       }
       db.query(`SELECT * FROM circles`,function(error,result){//함수로 빼기
@@ -242,7 +244,8 @@ app.get('/circle', function(request, response){
                 }
                 average = average/comments.length;
                 var create_form = circleTemplate.create_form(board[0].id, board[0].location,board[0].type,average);
-                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, '', board[0].description, circleCategory, comment, create_form, buttonOption,buttonProcess, request.query.location);
+                console.log(board[0].image);
+                var html = boardTemplate.html(board[0].title, board[0].author, board[0].date, board[0].image, board[0].description, circleCategory, comment, create_form, buttonOption,buttonProcess, request.query.location);
                 response.send(html);
               });
             }
@@ -390,8 +393,15 @@ app.get('/circle_page', function(request, response) {
   });
 });
 app.get('/reserv_main', function(request, response) {
-  var boards = '';
+///query location = reservation
+if(request.cookies.authority != 'Master')
+{
+  response.send(`<script type = "text/javascript">alert("동아리장만 시설예약을 할 수 있습니다.");
+  location.href='/';</script>`);
+}
+else{
   db.query(`SELECT * FROM board WHERE location = ?`, [request.query.location], function(error, result) {
+    var boards = ``;
     if(result[0]){
       for(var i=0; i<result.length; i++)
        if(result[i].type === request.query.type){
@@ -407,9 +417,9 @@ app.get('/reserv_main', function(request, response) {
       var html = reservTemplate.html(boards, '', request.query.type);
       response.send(html);
     }
-  });  
+  });
+ }
 });
-
 app.get('/reserv_page', function(request, response) {
   console.log(request.query.location); ////////location 쿼리가 안넘어옴
   db.query('SELECT * FROM board', function(error, boards) {
@@ -466,3 +476,4 @@ app.post('/comment/createprocess', function(request, response) {
   });
 });
 app.listen(3000);
+
