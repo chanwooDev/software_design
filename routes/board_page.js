@@ -32,9 +32,9 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 	var db = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
-	  password : 'root',
+	  password : '1234',
 	  database : 'CIRCLE',
-	  port : '3300'
+	  port : '3306'
 	});
 	db.connect();
 	router.use('/static', express.static(__dirname + '/public'));
@@ -79,6 +79,7 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			}
 		}
 
+  if(result[0].circle === location && request.cookies.authority === "Master"){
 		  var html = boardTemplate.html('','','','','','',`
 			<div class="card my-4">
 			  <form action="/board_page/create_process?location=${location}&type=${type}" method="post" enctype="multipart/form-data">
@@ -95,10 +96,14 @@ module.exports = function(app){//함수로 만들어 객체 router을 전달받�
 			</div>
 		  `,'');
 		  response.send(html);
-		});
-
-
+  }
+				else{
+					response.send(`<script type = "text/javascript">alert("아직 소개글이 생성되지 않았습니다.");
+					location.href='/';</script>`);
+				}; 
+	});
 	router.post('/create_process',upload.single('file'), function(request, response){
+
 	  //var html = circleTemplate.html();
 	  var post = request.body;
 	  var title = post.title;

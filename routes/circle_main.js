@@ -21,9 +21,9 @@ module.exports = function(app) { //함수로 만들어 객체 router을 전달�
   var db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'root',
+    password: '1234',
     database: 'CIRCLE',
-    port: '3300'
+    port: '3306'
   });
   db.connect();
   router.use('/static', express.static(__dirname + '/public'));

@@ -402,13 +402,21 @@ if(request.cookies.authority != 'Master')
 else{
   db.query(`SELECT * FROM board WHERE location = ?`, [request.query.location], function(error, result) {
     var boards = ``;
-    for (var i = result.length - 1; i >= 0; i--) {
-      var boardPointer = reservTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location);
-      boards += boardPointer;
+    if(result[0]){
+      for(var i=0; i<result.length; i++)
+       if(result[i].type === request.query.type){
+          //for (var i = result.length - 1; i >= 0; i--) {
+            var boardPointer = reservTemplate.boardPointer(result[i].title, result[i].author, result[i].id, result[i].description, request.query.location, request.query.type);
+            boards += boardPointer;
+          }
+        var html = reservTemplate.html(boards, '', request.query.type, `../data/image/${request.query.type}.jpg`);
+        console.log(boards);
+        response.send(html);
     }
-
-    var html = reservTemplate.html(boards, '');
-    response.send(html);
+    else{
+      var html = reservTemplate.html(boards, '', request.query.type);
+      response.send(html);
+    }
   });
  }
 });
@@ -468,3 +476,4 @@ app.post('/comment/createprocess', function(request, response) {
   });
 });
 app.listen(3000);
+
